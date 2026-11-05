@@ -4,6 +4,12 @@
 
 > 蝶引一程，取件一码。
 
+<p align="center">
+  <a href="https://github.com/DavidLWB/HuTaoParcelBox/releases/latest">
+    <img src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC-A63B34?style=for-the-badge" alt="下载最新版本">
+  </a>
+</p>
+
 蝶引速取是一个非官方的 Android 取件辅助应用，把常用快递平台的身份码和待取包裹集中到同一个界面，减少在多个 App 之间来回切换。应用只在本机 WebView 中加载各平台官方页面，不提供账号服务，也不代理平台接口。
 
 系统要求：Android 8.0 及以上。
