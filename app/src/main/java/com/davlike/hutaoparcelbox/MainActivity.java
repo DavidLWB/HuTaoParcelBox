@@ -1,5 +1,6 @@
 package com.davlike.hutaoparcelbox;
 
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -56,6 +57,21 @@ public final class MainActivity extends Activity {
     private static final String JD_PENDING_DEEPLINK =
         "openjd://virtual?params=%7B%22category%22%3A%22jump%22%2C%22des%22%3A%22orderlist%22%7D";
     private static final String JD_WEB_FALLBACK = "https://order.jd.com/center/list.action";
+    private static final String TAOBAO_PACKAGE = "com.taobao.taobao";
+    private static final String TAOBAO_ORDER_ACTIVITY =
+        "com.taobao.android.order.bundle.TBOrderListActivity";
+    private static final String TAOBAO_ORDER_DEEPLINK =
+        "taobao://m.taobao.com/tbopen/index.html?h5Url=https%3A%2F%2Fh5.m.taobao.com%2Fawp%2Fbase%2Forder.htm";
+    private static final String TAOBAO_ORDER_DEEPLINK_FALLBACK =
+        "tbopen://m.taobao.com/tbopen/index.html?h5Url=https%3A%2F%2Fh5.m.taobao.com%2Fawp%2Fbase%2Forder.htm";
+    private static final String PDD_ORDER_DEEPLINK =
+        "pinduoduo://com.xunmeng.pinduoduo/orders.html?type=1&comment_tab=1&combine_orders=1&main_orders=1&refer_page_name=personal";
+    private static final String XHS_PACKAGE = "com.xingin.xhs";
+    private static final String XHS_ORDER_DEEPLINK = "xhsdiscover://rn/lancer-order/order/list";
+    private static final String MEITUAN_PACKAGE = "com.sankuai.meituan";
+    private static final String MEITUAN_ORDER_DEEPLINK = "imeituan://www.meituan.com/orderTab";
+    private static final String DOUYIN_PACKAGE = "com.ss.android.ugc.aweme";
+    private static final String DOUYIN_ORDER_DEEPLINK = "snssdk1128://mall/xtab";
     private static final String PDD_IDENTITY_DEEPLINK =
         "pinduoduo://com.xunmeng.pinduoduo/mdkd/package?tab=ID_CODE&entry_source=11&refer_page_name=login&refer_page_sn=10169";
     private static final String PDD_IDENTITY_DEEPLINK_FALLBACK =
@@ -66,6 +82,7 @@ public final class MainActivity extends Activity {
         "https://m.pinduoduo.net/mdkd/package?entry_source=18&extra_params=from_wx_jump%3D1&p_channel=0";
     private static final String PREF_UI = Palette.PREF_UI;
     private static final String KEY_SECTION = "last_section";
+    private static final String KEY_START_SECTION = "start_section";
     private static final String KEY_IDENTITY_ORDER = "identity_order";
     private static final String KEY_PARCELS_ORDER = "parcels_order";
     private static final String KEY_IDENTITY_HIDDEN = "identity_hidden";
@@ -120,22 +137,26 @@ public final class MainActivity extends Activity {
     private WebView popupView;
     private long lastBlockedNotice = 0;
     private boolean activityResumed;
+    private int pageTransitionGeneration;
 
     private final class PlatformCard {
         final int section;
         final int platform;
         final LinearLayout card;
         final FrameLayout body;
+        final int bodyHeight;
         final TextView status;
         final ImageView refresh;
         final ImageView chevron;
+        ValueAnimator bodyAnimator;
 
-        PlatformCard(int section, int platform, LinearLayout card, FrameLayout body,
+        PlatformCard(int section, int platform, LinearLayout card, FrameLayout body, int bodyHeight,
                      TextView status, ImageView refresh, ImageView chevron) {
             this.section = section;
             this.platform = platform;
             this.card = card;
             this.body = body;
+            this.bodyHeight = bodyHeight;
             this.status = status;
             this.refresh = refresh;
             this.chevron = chevron;
@@ -209,6 +230,14 @@ public final class MainActivity extends Activity {
             pendingScrollPlatform = -1;
             contentHost.post(() -> scrollToCard(identityScroll, identityCards[platform].card));
         }
+        if (state == null && getIntent() != null
+                && getIntent().getStringExtra("provider") == null
+                && getSharedPreferences(PREF_UI, MODE_PRIVATE)
+                    .getBoolean(UpdateChecker.KEY_AUTO_UPDATE, true)) {
+            contentHost.postDelayed(() -> {
+                if (!isFinishing() && !isDestroyed()) UpdateChecker.check(this, false);
+            }, 2500);
+        }
     }
 
     private void applySystemBars() {
@@ -259,7 +288,9 @@ public final class MainActivity extends Activity {
         }
         resetExpansion(SECTION_IDENTITY);
         resetExpansion(SECTION_PARCELS);
-        section = clampSection(prefs.getInt(KEY_SECTION, SECTION_IDENTITY));
+        int startSection = prefs.getInt(KEY_START_SECTION, SECTION_IDENTITY);
+        section = startSection < 0 ? clampSection(prefs.getInt(KEY_SECTION, SECTION_IDENTITY))
+            : clampSection(startSection);
         String provider = getIntent() == null ? null : getIntent().getStringExtra("provider");
         if ("pinduoduo".equals(provider)) {
             section = SECTION_IDENTITY;
@@ -522,6 +553,40 @@ public final class MainActivity extends Activity {
             .show();
     }
 
+    private String themeModeLabel() {
+        String mode = Palette.mode(this);
+        String label = "light".equals(mode) ? "浅色" : "dark".equals(mode) ? "深色" : "跟随系统";
+        return "当前：" + label;
+    }
+
+    private String startSectionLabel() {
+        int value = getSharedPreferences(PREF_UI, MODE_PRIVATE)
+            .getInt(KEY_START_SECTION, SECTION_IDENTITY);
+        String label = value == SECTION_IDENTITY ? "身份码"
+            : value == SECTION_PARCELS ? "待取包裹"
+            : value == SECTION_MORE ? "更多" : "上次停留";
+        return "当前：" + label;
+    }
+
+    private void showStartSectionDialog() {
+        final String[] labels = {"身份码", "待取包裹", "更多", "上次停留"};
+        final int[] values = {SECTION_IDENTITY, SECTION_PARCELS, SECTION_MORE, -1};
+        int stored = getSharedPreferences(PREF_UI, MODE_PRIVATE)
+            .getInt(KEY_START_SECTION, SECTION_IDENTITY);
+        int checked = 0;
+        for (int i = 0; i < values.length; i++) if (values[i] == stored) checked = i;
+        new AlertDialog.Builder(this, dialogTheme())
+            .setTitle("默认页面")
+            .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                getSharedPreferences(PREF_UI, MODE_PRIVATE).edit()
+                    .putInt(KEY_START_SECTION, values[which]).apply();
+                dialog.dismiss();
+                renderContent();
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+
     private int dialogTheme() {
         return palette.dark ? R.style.AppDialogThemeDark : R.style.AppDialogThemeLight;
     }
@@ -719,25 +784,27 @@ public final class MainActivity extends Activity {
         card.addView(header);
 
         FrameLayout body = null;
+        int bodyHeight = 0;
         if (embedded) {
             body = new CardBody(this);
             body.setBackgroundColor(palette.surface);
-            int height = dp(300);
+            bodyHeight = dp(300);
             body.setVisibility(expanded[platform] ? View.VISIBLE : View.GONE);
-            card.addView(body, new LinearLayout.LayoutParams(-1, height));
+            card.addView(body, new LinearLayout.LayoutParams(-1, bodyHeight));
         } else if (cainiaoIdentity) {
             body = new FrameLayout(this);
             body.setBackgroundColor(palette.surface);
+            bodyHeight = dp(240);
             body.setVisibility(expanded[platform] ? View.VISIBLE : View.GONE);
             body.addView(buildCainiaoPanel(), new FrameLayout.LayoutParams(-1, -1));
-            card.addView(body, new LinearLayout.LayoutParams(-1, dp(240)));
+            card.addView(body, new LinearLayout.LayoutParams(-1, bodyHeight));
         } else {
             TextView hint = label("入口已预留，功能即将上线", 12, palette.muted, false);
             hint.setPadding(dp(50), 0, dp(14), dp(14));
             card.addView(hint);
             card.setAlpha(0.78f);
         }
-        return new PlatformCard(targetSection, platform, card, body, status, refresh, chevron);
+        return new PlatformCard(targetSection, platform, card, body, bodyHeight, status, refresh, chevron);
     }
 
     private String cardTitle(int targetSection, int platform) {
@@ -763,9 +830,11 @@ public final class MainActivity extends Activity {
         if (targetSection == SECTION_PARCELS && platform == PLATFORM_CAINIAO) return;
         boolean[] expanded = targetSection == SECTION_IDENTITY ? identityExpanded : parcelsExpanded;
         expanded[platform] = !expanded[platform];
-        applyCardState(targetSection, platform);
+        applyCardState(targetSection, platform, true);
         if (section != targetSection) return;
         if (!expanded[platform]) {
+            InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            keyboard.hideSoftInputFromWindow(contentHost.getWindowToken(), 0);
             if (platform == PLATFORM_PDD) pddPage.idlePage();
             return;
         }
@@ -885,7 +954,7 @@ public final class MainActivity extends Activity {
         if (section == SECTION_MORE) return;
         boolean[] expanded = section == SECTION_IDENTITY ? identityExpanded : parcelsExpanded;
         expanded[PLATFORM_PDD] = false;
-        applyCardState(section, PLATFORM_PDD);
+        applyCardState(section, PLATFORM_PDD, true);
         pddPage.idlePage();
     }
 
@@ -907,18 +976,103 @@ public final class MainActivity extends Activity {
     }
 
     private void applyCardState(int targetSection, int platform) {
+        applyCardState(targetSection, platform, false);
+    }
+
+    private void applyCardState(int targetSection, int platform, boolean animate) {
         PlatformCard[] cards = targetSection == SECTION_IDENTITY ? identityCards : parcelsCards;
         boolean[] expanded = targetSection == SECTION_IDENTITY ? identityExpanded : parcelsExpanded;
         PlatformCard card = cards[platform];
         if (card == null) return;
-        if (card.body != null) card.body.setVisibility(expanded[platform] ? View.VISIBLE : View.GONE);
+        boolean open = expanded[platform];
+        if (card.body != null) {
+            if (animate) {
+                animateCardBody(card, open);
+            } else {
+                if (card.bodyAnimator != null) {
+                    ValueAnimator previous = card.bodyAnimator;
+                    card.bodyAnimator = null;
+                    previous.cancel();
+                }
+                card.body.animate().cancel();
+                ViewGroup.LayoutParams params = card.body.getLayoutParams();
+                if (params != null) {
+                    params.height = card.bodyHeight;
+                    card.body.setLayoutParams(params);
+                }
+                card.body.setAlpha(1f);
+                card.body.setVisibility(open ? View.VISIBLE : View.GONE);
+            }
+        }
         if (card.refresh != null) {
-            boolean showRefresh = expanded[platform] && !(platform == PLATFORM_PDD && pddAppMode);
+            boolean showRefresh = open && !(platform == PLATFORM_PDD && pddAppMode);
             card.refresh.setVisibility(showRefresh ? View.VISIBLE : View.GONE);
         }
         if (card.chevron != null) {
-            card.chevron.animate().rotation(expanded[platform] ? 180f : 0f).setDuration(160).start();
+            card.chevron.animate().rotation(open ? 180f : 0f)
+                .setDuration(animate ? 220 : 160)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .start();
         }
+    }
+
+    private void animateCardBody(PlatformCard card, boolean expand) {
+        if (card.body == null || card.bodyHeight <= 0) return;
+        if (card.bodyAnimator != null) {
+            ValueAnimator previous = card.bodyAnimator;
+            card.bodyAnimator = null;
+            previous.cancel();
+        }
+        card.body.animate().cancel();
+        ViewGroup.LayoutParams params = card.body.getLayoutParams();
+        if (params == null) return;
+        final int startHeight;
+        if (expand) {
+            params.height = 0;
+            card.body.setLayoutParams(params);
+            card.body.setVisibility(View.VISIBLE);
+            card.body.setAlpha(0f);
+            startHeight = 0;
+        } else {
+            startHeight = Math.max(0, card.body.getHeight());
+            if (startHeight == 0) {
+                card.body.setVisibility(View.GONE);
+                card.body.setAlpha(1f);
+                params.height = card.bodyHeight;
+                card.body.setLayoutParams(params);
+                return;
+            }
+        }
+        final ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        animator.setDuration(expand ? 210 : 180);
+        animator.setInterpolator(new android.view.animation.DecelerateInterpolator());
+        animator.addUpdateListener(animation -> {
+            float fraction = (float) animation.getAnimatedValue();
+            int height = expand
+                ? Math.round(card.bodyHeight * fraction)
+                : Math.round(startHeight * (1f - fraction));
+            ViewGroup.LayoutParams bodyParams = card.body.getLayoutParams();
+            if (bodyParams != null) {
+                bodyParams.height = height;
+                card.body.setLayoutParams(bodyParams);
+            }
+            card.body.setAlpha(expand ? fraction : 1f - fraction);
+        });
+        animator.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override public void onAnimationEnd(android.animation.Animator animation) {
+                if (card.bodyAnimator != animator) return;
+                card.bodyAnimator = null;
+                ViewGroup.LayoutParams bodyParams = card.body.getLayoutParams();
+                if (bodyParams != null) {
+                    bodyParams.height = card.bodyHeight;
+                    card.body.setLayoutParams(bodyParams);
+                }
+                card.body.setAlpha(1f);
+                card.body.setVisibility(expand ? View.VISIBLE : View.GONE);
+            }
+        });
+        card.bodyAnimator = animator;
+        animator.start();
     }
 
     private void activatePlatform(int platform) {
@@ -951,33 +1105,94 @@ public final class MainActivity extends Activity {
     private void selectSection(int target) {
         if (SiteDataClearer.isBusy()) return;
         if (popupDialog != null) popupDialog.dismiss();
-        accountOpen = false;
-        orderOpen = false;
-        section = target;
-        rememberState();
-        InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        keyboard.hideSoftInputFromWindow(contentHost.getWindowToken(), 0);
-        renderContent();
+        boolean subpage = accountOpen || orderOpen;
+        if (target == section && !subpage) return;
+        int direction = target == section ? -1 : (target > section ? 1 : -1);
+        runPageTransition(direction, () -> {
+            accountOpen = false;
+            orderOpen = false;
+            section = target;
+            rememberState();
+            InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            keyboard.hideSoftInputFromWindow(contentHost.getWindowToken(), 0);
+            renderContent();
+        });
     }
 
     private void openAccountPage() {
-        section = SECTION_MORE;
-        accountOpen = true;
-        orderOpen = false;
-        rememberState();
-        renderContent();
+        if (accountOpen && section == SECTION_MORE) return;
+        runPageTransition(1, () -> {
+            section = SECTION_MORE;
+            accountOpen = true;
+            orderOpen = false;
+            rememberState();
+            renderContent();
+        });
     }
 
     private void openOrderPage() {
-        section = SECTION_MORE;
-        accountOpen = false;
-        orderOpen = true;
-        rememberState();
-        renderContent();
+        if (orderOpen && section == SECTION_MORE) return;
+        runPageTransition(1, () -> {
+            section = SECTION_MORE;
+            accountOpen = false;
+            orderOpen = true;
+            rememberState();
+            renderContent();
+        });
+    }
+
+    private void closeMoreSubpage() {
+        runPageTransition(-1, () -> {
+            accountOpen = false;
+            orderOpen = false;
+            renderContent();
+        });
+    }
+
+    private void runPageTransition(int direction, Runnable render) {
+        if (contentHost == null) {
+            render.run();
+            return;
+        }
+        final int generation = ++pageTransitionGeneration;
+        final View old = contentHost.getChildAt(0);
+        if (old == null) {
+            render.run();
+            return;
+        }
+        old.animate().cancel();
+        old.animate()
+            .alpha(0f)
+            .translationX(-direction * dp(18))
+            .setDuration(100)
+            .setInterpolator(new android.view.animation.DecelerateInterpolator())
+            .withEndAction(() -> {
+                if (generation != pageTransitionGeneration || old.getParent() != contentHost) return;
+                render.run();
+                if (generation != pageTransitionGeneration) return;
+                View page = contentHost.getChildAt(0);
+                if (page == null) return;
+                page.animate().cancel();
+                page.setAlpha(0f);
+                page.setTranslationX(direction * dp(18));
+                page.animate()
+                    .alpha(1f)
+                    .translationX(0f)
+                    .setDuration(200)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+            })
+            .start();
     }
 
     private void startAbout() {
         startActivity(new android.content.Intent(this, AboutActivity.class));
+    }
+
+    private void preparePage(View page) {
+        page.animate().cancel();
+        page.setAlpha(1f);
+        page.setTranslationX(0f);
     }
 
     private void renderContent() {
@@ -992,6 +1207,7 @@ public final class MainActivity extends Activity {
             pddPage.idlePage();
             View page = orderOpen ? buildOrderView()
                 : accountOpen ? buildAccountView() : buildMoreView();
+            preparePage(page);
             contentHost.addView(page, new FrameLayout.LayoutParams(-1, -1));
             updateAllCardStates();
             updateChrome();
@@ -1000,6 +1216,7 @@ public final class MainActivity extends Activity {
         if (section == SECTION_IDENTITY) identityPage();
         else parcelsPage();
         View page = section == SECTION_IDENTITY ? identityScroll : parcelsScroll;
+        preparePage(page);
         contentHost.addView(page, new FrameLayout.LayoutParams(-1, -1));
         attachWebViews(section == SECTION_IDENTITY ? identityCards : parcelsCards);
         if (pddAppMode) addPddAppPanel(section);
@@ -1202,8 +1419,12 @@ public final class MainActivity extends Activity {
     }
 
     private boolean tryOpenCainiaoActivity(String activityName) {
+        return tryOpenExplicitActivity(CAINIAO_PACKAGE, activityName);
+    }
+
+    private boolean tryOpenExplicitActivity(String packageName, String activityName) {
         android.content.Intent intent = new android.content.Intent();
-        intent.setComponent(new android.content.ComponentName(CAINIAO_PACKAGE, activityName));
+        intent.setComponent(new android.content.ComponentName(packageName, activityName));
         intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
             | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
         if (intent.resolveActivity(getPackageManager()) == null) return false;
@@ -1224,7 +1445,7 @@ public final class MainActivity extends Activity {
                 | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
             try {
                 startActivity(launch);
-                toast("已打开京东，请在 App 内查看待取包裹");
+                toast("已打开京东，请在订单页查看");
                 return;
             } catch (android.content.ActivityNotFoundException | SecurityException unavailable) {
                 // Fall through to the web page.
@@ -1250,6 +1471,82 @@ public final class MainActivity extends Activity {
         if (intent.resolveActivity(getPackageManager()) == null) return false;
         try {
             startActivity(intent);
+            return true;
+        } catch (android.content.ActivityNotFoundException | SecurityException
+                 | IllegalArgumentException unavailable) {
+            return false;
+        }
+    }
+
+    private void openTaobaoOrders() {
+        if (tryOpenExplicitActivity(TAOBAO_PACKAGE, TAOBAO_ORDER_ACTIVITY)) return;
+        openAppOrderPage("淘宝", TAOBAO_PACKAGE,
+            new String[]{TAOBAO_ORDER_DEEPLINK, TAOBAO_ORDER_DEEPLINK_FALLBACK});
+    }
+
+    private void openPinduoduoOrders() {
+        openAppOrderPage("拼多多", PDD_PACKAGE,
+            new String[]{PDD_ORDER_DEEPLINK});
+    }
+
+    private void openXhsOrders() {
+        openAppOrderPage("小红书", XHS_PACKAGE,
+            new String[]{XHS_ORDER_DEEPLINK});
+    }
+
+    private void openMeituanOrders() {
+        openAppOrderPage("美团", MEITUAN_PACKAGE,
+            new String[]{MEITUAN_ORDER_DEEPLINK});
+    }
+
+    private void openDouyinOrders() {
+        openAppOrderPage("抖音", DOUYIN_PACKAGE,
+            new String[]{DOUYIN_ORDER_DEEPLINK});
+    }
+
+    private void openCainiaoHome() {
+        if (tryOpenCainiaoActivity(CAINIAO_HOME_ACTIVITY)) return;
+        if (launchPackage(CAINIAO_PACKAGE)) {
+            toast("已打开菜鸟 App");
+            return;
+        }
+        toast("未安装菜鸟 App");
+    }
+
+    private void openAppOrderPage(String appLabel, String packageName, String[] deepLinks) {
+        for (String deepLink : deepLinks) {
+            if (tryOpenPackageUri(deepLink, packageName)) return;
+        }
+        if (launchPackage(packageName)) {
+            toast("已打开" + appLabel + "，请在订单页查看");
+            return;
+        }
+        toast("未安装" + appLabel + " App");
+    }
+
+    private boolean tryOpenPackageUri(String uri, String packageName) {
+        android.content.Intent intent = new android.content.Intent(
+            android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri));
+        intent.setPackage(packageName);
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+            | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        if (intent.resolveActivity(getPackageManager()) == null) return false;
+        try {
+            startActivity(intent);
+            return true;
+        } catch (android.content.ActivityNotFoundException | SecurityException
+                 | IllegalArgumentException unavailable) {
+            return false;
+        }
+    }
+
+    private boolean launchPackage(String packageName) {
+        android.content.Intent launch = getPackageManager().getLaunchIntentForPackage(packageName);
+        if (launch == null) return false;
+        launch.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+            | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        try {
+            startActivity(launch);
             return true;
         } catch (android.content.ActivityNotFoundException | SecurityException
                  | IllegalArgumentException unavailable) {
@@ -1283,15 +1580,34 @@ public final class MainActivity extends Activity {
 
     private void updateChrome() {
         if (headerTitle != null) {
-            headerTitle.setText(section == SECTION_IDENTITY ? "身份码"
+            String title = section == SECTION_IDENTITY ? "身份码"
                 : section == SECTION_PARCELS ? "待取包裹"
                 : orderOpen ? "排序"
-                : accountOpen ? "账号绑定管理" : "更多");
+                : accountOpen ? "账号绑定管理" : "更多";
+            if (!title.contentEquals(headerTitle.getText())) {
+                headerTitle.animate().cancel();
+                headerTitle.setText(title);
+                headerTitle.setAlpha(0f);
+                headerTitle.setTranslationY(-dp(4));
+                headerTitle.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(180)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+            }
         }
         for (int i = 0; i < navItems.length; i++) {
             boolean active = section == i;
             navItems[i].setBackground(active ? background(palette.accentSoft, 16) : null);
             navIcons[i].setColorFilter(active ? palette.accent : palette.muted, PorterDuff.Mode.SRC_IN);
+            navIcons[i].animate().cancel();
+            navIcons[i].animate()
+                .scaleX(active ? 1.06f : 1f)
+                .scaleY(active ? 1.06f : 1f)
+                .setDuration(150)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .start();
             navLabels[i].setTextColor(active ? palette.accent : palette.muted);
             navLabels[i].setTypeface(Typeface.DEFAULT, active ? Typeface.BOLD : Typeface.NORMAL);
             navItems[i].setSelected(active);
@@ -1349,44 +1665,26 @@ public final class MainActivity extends Activity {
         cardLayout.topMargin = dp(10);
         column.addView(card, cardLayout);
 
-        TextView entryGroup = label("快捷入口", 12, palette.muted, false);
+        TextView entryGroup = label("订单快捷入口", 12, palette.muted, false);
         entryGroup.setLetterSpacing(0.08f);
         LinearLayout.LayoutParams entryGroupLayout = new LinearLayout.LayoutParams(-1, -2);
         entryGroupLayout.topMargin = dp(22);
         column.addView(entryGroup, entryGroupLayout);
 
-        LinearLayout jdCard = new LinearLayout(this);
-        jdCard.setGravity(Gravity.CENTER_VERTICAL);
-        jdCard.setPadding(dp(16), dp(16), dp(16), dp(16));
-        jdCard.setBackground(cardShape());
-        jdCard.setClickable(true);
-        jdCard.setFocusable(true);
-        jdCard.setContentDescription("打开京东订单页面");
-
-        ImageView jdIcon = new ImageView(this);
-        jdIcon.setImageResource(R.drawable.ic_jd);
-        jdIcon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        jdCard.addView(jdIcon, size(24, 24));
-
-        LinearLayout jdTexts = new LinearLayout(this);
-        jdTexts.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams jdTextsLayout = new LinearLayout.LayoutParams(0, -2, 1f);
-        jdTextsLayout.setMarginStart(dp(12));
-        TextView jdTitle = label("打开京东订单页面", 15, palette.ink, true);
-        TextView jdSubtitle = label("使用京东 App 查看全部订单", 12, palette.muted, false);
-        LinearLayout.LayoutParams jdSubtitleLayout = new LinearLayout.LayoutParams(-2, -2);
-        jdSubtitleLayout.topMargin = dp(4);
-        jdTexts.addView(jdTitle);
-        jdTexts.addView(jdSubtitle, jdSubtitleLayout);
-        jdCard.addView(jdTexts, jdTextsLayout);
-
-        TextView jdChevron = label("›", 22, palette.muted, false);
-        jdCard.addView(jdChevron);
-        jdCard.setOnClickListener(v -> openJdPending());
-
-        LinearLayout.LayoutParams jdCardLayout = new LinearLayout.LayoutParams(-1, -2);
-        jdCardLayout.topMargin = dp(10);
-        column.addView(jdCard, jdCardLayout);
+        addShortcutCard(column, R.drawable.ic_cainiao, "打开菜鸟",
+            "跳过开屏广告，直接进入菜鸟首页", this::openCainiaoHome);
+        addShortcutCard(column, R.drawable.ic_taobao, "淘宝订单",
+            "使用淘宝 App 查看订单", this::openTaobaoOrders);
+        addShortcutCard(column, R.drawable.ic_pinduoduo, "拼多多订单",
+            "使用拼多多 App 查看订单", this::openPinduoduoOrders);
+        addShortcutCard(column, R.drawable.ic_jd, "京东订单",
+            "使用京东 App 查看订单", this::openJdPending);
+        addShortcutCard(column, R.drawable.ic_xiaohongshu, "小红书订单",
+            "使用小红书 App 查看订单", this::openXhsOrders);
+        addShortcutCard(column, R.drawable.ic_meituan, "美团订单",
+            "使用美团 App 查看订单", this::openMeituanOrders);
+        addShortcutCard(column, R.drawable.ic_douyin, "抖音订单",
+            "使用抖音 App 查看订单", this::openDouyinOrders);
 
         TextView displayGroup = label("显示", 12, palette.muted, false);
         displayGroup.setLetterSpacing(0.08f);
@@ -1394,39 +1692,12 @@ public final class MainActivity extends Activity {
         displayLayout.topMargin = dp(22);
         column.addView(displayGroup, displayLayout);
 
-        LinearLayout sortCard = new LinearLayout(this);
-        sortCard.setGravity(Gravity.CENTER_VERTICAL);
-        sortCard.setPadding(dp(16), dp(16), dp(16), dp(16));
-        sortCard.setBackground(cardShape());
-        sortCard.setClickable(true);
-        sortCard.setFocusable(true);
-        sortCard.setContentDescription("排序");
-
-        ImageView sortIcon = new ImageView(this);
-        sortIcon.setImageResource(R.drawable.ic_sort);
-        sortIcon.setColorFilter(palette.accent, PorterDuff.Mode.SRC_IN);
-        sortIcon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        sortCard.addView(sortIcon, size(24, 24));
-
-        LinearLayout sortTexts = new LinearLayout(this);
-        sortTexts.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams sortTextsLayout = new LinearLayout.LayoutParams(0, -2, 1f);
-        sortTextsLayout.setMarginStart(dp(12));
-        TextView sortTitle = label("排序", 15, palette.ink, true);
-        TextView sortSubtitle = label("调整身份码与待取包裹的平台顺序", 12, palette.muted, false);
-        LinearLayout.LayoutParams sortSubtitleLayout = new LinearLayout.LayoutParams(-2, -2);
-        sortSubtitleLayout.topMargin = dp(4);
-        sortTexts.addView(sortTitle);
-        sortTexts.addView(sortSubtitle, sortSubtitleLayout);
-        sortCard.addView(sortTexts, sortTextsLayout);
-
-        TextView sortChevron = label("›", 22, palette.muted, false);
-        sortCard.addView(sortChevron);
-        sortCard.setOnClickListener(v -> openOrderPage());
-
-        LinearLayout.LayoutParams sortCardLayout = new LinearLayout.LayoutParams(-1, -2);
-        sortCardLayout.topMargin = dp(10);
-        column.addView(sortCard, sortCardLayout);
+        addShortcutCard(column, R.drawable.ic_sort, "平台排序",
+            "调整身份码与待取包裹的平台顺序", this::openOrderPage, true);
+        addShortcutCard(column, R.drawable.ic_theme, "主题切换",
+            themeModeLabel(), this::showThemeDialog, true);
+        addShortcutCard(column, R.drawable.ic_home, "默认页面",
+            startSectionLabel(), this::showStartSectionDialog, true);
 
         TextView aboutGroup = label("关于", 12, palette.muted, false);
         aboutGroup.setLetterSpacing(0.08f);
@@ -1434,39 +1705,10 @@ public final class MainActivity extends Activity {
         aboutGroupLayout.topMargin = dp(22);
         column.addView(aboutGroup, aboutGroupLayout);
 
-        LinearLayout aboutCard = new LinearLayout(this);
-        aboutCard.setGravity(Gravity.CENTER_VERTICAL);
-        aboutCard.setPadding(dp(16), dp(16), dp(16), dp(16));
-        aboutCard.setBackground(cardShape());
-        aboutCard.setClickable(true);
-        aboutCard.setFocusable(true);
-        aboutCard.setContentDescription("关于");
-
-        ImageView aboutIcon = new ImageView(this);
-        aboutIcon.setImageResource(R.drawable.ic_about);
-        aboutIcon.setColorFilter(palette.accent, PorterDuff.Mode.SRC_IN);
-        aboutIcon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        aboutCard.addView(aboutIcon, size(24, 24));
-
-        LinearLayout aboutTexts = new LinearLayout(this);
-        aboutTexts.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams aboutTextsLayout = new LinearLayout.LayoutParams(0, -2, 1f);
-        aboutTextsLayout.setMarginStart(dp(12));
-        TextView aboutTitle = label("关于", 15, palette.ink, true);
-        TextView aboutSubtitle = label("版本、开发者与项目地址", 12, palette.muted, false);
-        LinearLayout.LayoutParams aboutSubtitleLayout = new LinearLayout.LayoutParams(-2, -2);
-        aboutSubtitleLayout.topMargin = dp(4);
-        aboutTexts.addView(aboutTitle);
-        aboutTexts.addView(aboutSubtitle, aboutSubtitleLayout);
-        aboutCard.addView(aboutTexts, aboutTextsLayout);
-
-        TextView aboutChevron = label("›", 22, palette.muted, false);
-        aboutCard.addView(aboutChevron);
-        aboutCard.setOnClickListener(v -> startAbout());
-
-        LinearLayout.LayoutParams aboutCardLayout = new LinearLayout.LayoutParams(-1, -2);
-        aboutCardLayout.topMargin = dp(10);
-        column.addView(aboutCard, aboutCardLayout);
+        addShortcutCard(column, R.drawable.ic_about, "关于",
+            "版本、开发者与项目地址", this::startAbout, true);
+        addShortcutCard(column, R.drawable.ic_refresh, "检查更新",
+            "与 GitHub 最新版本比对", () -> UpdateChecker.check(this, true), true);
 
         TextView footer = label(getString(R.string.app_name) + "  " + versionName(), 11,
             palette.muted, false);
@@ -1476,6 +1718,47 @@ public final class MainActivity extends Activity {
         column.addView(footer, footerLayout);
         scroll.addView(column);
         return scroll;
+    }
+
+    private void addShortcutCard(LinearLayout column, int iconRes, String titleText,
+                                 String subtitleText, Runnable action) {
+        addShortcutCard(column, iconRes, titleText, subtitleText, action, false);
+    }
+
+    private void addShortcutCard(LinearLayout column, int iconRes, String titleText,
+                                 String subtitleText, Runnable action, boolean tintIcon) {
+        LinearLayout card = new LinearLayout(this);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(16), dp(16), dp(16), dp(16));
+        card.setBackground(cardShape());
+        card.setClickable(true);
+        card.setFocusable(true);
+        card.setContentDescription(titleText);
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(iconRes);
+        if (tintIcon) icon.setColorFilter(palette.accent, PorterDuff.Mode.SRC_IN);
+        icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        card.addView(icon, size(24, 24));
+
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams textsLayout = new LinearLayout.LayoutParams(0, -2, 1f);
+        textsLayout.setMarginStart(dp(12));
+        TextView title = label(titleText, 15, palette.ink, true);
+        TextView subtitle = label(subtitleText, 12, palette.muted, false);
+        LinearLayout.LayoutParams subtitleLayout = new LinearLayout.LayoutParams(-2, -2);
+        subtitleLayout.topMargin = dp(4);
+        texts.addView(title);
+        texts.addView(subtitle, subtitleLayout);
+        card.addView(texts, textsLayout);
+
+        card.addView(label("›", 22, palette.muted, false));
+        card.setOnClickListener(v -> action.run());
+
+        LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
+        layout.topMargin = dp(10);
+        column.addView(card, layout);
     }
 
     private View buildAccountView() {
@@ -1492,10 +1775,7 @@ public final class MainActivity extends Activity {
         back.setClickable(true);
         back.setFocusable(true);
         back.setContentDescription("返回更多");
-        back.setOnClickListener(v -> {
-            accountOpen = false;
-            renderContent();
-        });
+        back.setOnClickListener(v -> closeMoreSubpage());
         bar.addView(back);
         page.addView(bar);
 
@@ -1543,10 +1823,7 @@ public final class MainActivity extends Activity {
         back.setClickable(true);
         back.setFocusable(true);
         back.setContentDescription("返回更多");
-        back.setOnClickListener(v -> {
-            orderOpen = false;
-            renderContent();
-        });
+        back.setOnClickListener(v -> closeMoreSubpage());
         bar.addView(back);
         page.addView(bar);
 
@@ -2425,19 +2702,19 @@ public final class MainActivity extends Activity {
             return;
         }
         if (section == SECTION_MORE && orderOpen) {
-            orderOpen = false;
-            renderContent();
+            closeMoreSubpage();
             return;
         }
         if (section == SECTION_MORE && accountOpen) {
-            accountOpen = false;
-            renderContent();
+            closeMoreSubpage();
             return;
         }
         if (section != SECTION_IDENTITY) {
-            section = SECTION_IDENTITY;
-            rememberState();
-            renderContent();
+            runPageTransition(-1, () -> {
+                section = SECTION_IDENTITY;
+                rememberState();
+                renderContent();
+            });
             return;
         }
         if (isExpanded(PLATFORM_PDD) && pddPage.goBack()) return;

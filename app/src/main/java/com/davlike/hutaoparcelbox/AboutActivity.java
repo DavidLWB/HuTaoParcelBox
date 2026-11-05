@@ -18,6 +18,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Switch;
 import android.widget.TextView;
 
 /** Standalone About screen without the main header or bottom navigation. */
@@ -159,6 +160,36 @@ public final class AboutActivity extends Activity {
         LinearLayout.LayoutParams githubLayout = new LinearLayout.LayoutParams(-2, -2);
         githubLayout.topMargin = dp(24);
         column.addView(github, githubLayout);
+
+        TextView update = label("检查更新", 13, palette.accent, true);
+        update.setGravity(Gravity.CENTER);
+        update.setPadding(dp(20), dp(10), dp(20), dp(10));
+        update.setBackground(background(palette.accentSoft, 18));
+        update.setClickable(true);
+        update.setFocusable(true);
+        update.setOnClickListener(v -> UpdateChecker.check(this, true));
+        LinearLayout.LayoutParams updateLayout = new LinearLayout.LayoutParams(-2, -2);
+        updateLayout.topMargin = dp(10);
+        column.addView(update, updateLayout);
+
+        Switch autoUpdate = new Switch(this);
+        autoUpdate.setText("启动时自动检测更新");
+        autoUpdate.setTextSize(13);
+        autoUpdate.setTextColor(palette.ink);
+        autoUpdate.setChecked(getSharedPreferences(Palette.PREF_UI, MODE_PRIVATE)
+            .getBoolean(UpdateChecker.KEY_AUTO_UPDATE, true));
+        autoUpdate.setOnCheckedChangeListener((button, checked) ->
+            getSharedPreferences(Palette.PREF_UI, MODE_PRIVATE).edit()
+                .putBoolean(UpdateChecker.KEY_AUTO_UPDATE, checked).apply());
+        LinearLayout.LayoutParams autoUpdateLayout = new LinearLayout.LayoutParams(-2, -2);
+        autoUpdateLayout.topMargin = dp(18);
+        column.addView(autoUpdate, autoUpdateLayout);
+
+        TextView updateHint = label("检查更新会访问 GitHub Releases", 11, palette.muted, false);
+        updateHint.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams updateHintLayout = new LinearLayout.LayoutParams(-2, -2);
+        updateHintLayout.topMargin = dp(6);
+        column.addView(updateHint, updateHintLayout);
 
         scroll.addView(column);
         root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
