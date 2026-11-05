@@ -17,12 +17,12 @@
 ## 界面预览
 
 <p align="center">
-  <img src="screenshots/identity.png" width="240" alt="身份码页面（已脱敏）">
+  <img src="screenshots/identity.png" width="240" alt="身份码页面">
   <img src="screenshots/more.png" width="240" alt="更多页面">
   <img src="screenshots/about.png" width="240" alt="关于页面">
 </p>
 
-<p align="center"><sub>身份码（截图已脱敏） · 更多 · 关于</sub></p>
+<p align="center"><sub>身份码 · 更多 · 关于</sub></p>
 
 ## 支持平台
 
