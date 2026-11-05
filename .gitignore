@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.*
+!.env.example
+local.properties
+.gradle/
+**/build/
+*.jks
+*.keystore
+.local/
+/dist/
+/*.apk
+/*.sha256
+.idea/
+*.iml

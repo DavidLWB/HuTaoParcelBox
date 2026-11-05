@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">蝶引速取</string>
+    <string name="app_slogan">蝶引一程，取件一码</string>
+    <string name="shortcut_taobao">淘宝身份码</string>
+    <string name="shortcut_pdd">拼多多身份码</string>
+</resources>

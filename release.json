@@ -1,0 +1,14 @@
+{
+    "name":  "HuTaoParcelBox",
+    "version":  "0.1.16beta",
+    "versionCode":  16,
+    "configuration":  "Release",
+    "tag":  "v0.1.16beta",
+    "package":  "com.davlike.hutaoparcelbox",
+    "file":  "HuTaoParcelBox-0.1.16beta-release.apk",
+    "sha256":  "10586e9bfb8661ac622dde36b561ae041321398ee7653f5069ec240f6f1a7a37",
+    "bytes":  642042,
+    "minSdk":  26,
+    "targetSdk":  35,
+    "signerCertificateSha256":  "414e994e841fb9d490ada1ddcd2ea3ed5019fdc569344a561b3ab5f48358ea68"
+}

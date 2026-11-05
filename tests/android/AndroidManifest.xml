@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.davlike.hutaoparcelbox.tests">
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
+    <application android:label="蝶引速取 fixture checks" />
+    <instrumentation android:name="com.davlike.hutaoparcelbox.tests.LogoutProbe" android:targetPackage="com.davlike.hutaoparcelbox" android:functionalTest="true" />
+    <instrumentation android:name="com.davlike.hutaoparcelbox.tests.LoginProbe" android:targetPackage="com.davlike.hutaoparcelbox" android:functionalTest="true" />
+    <instrumentation android:name="com.davlike.hutaoparcelbox.tests.TaobaoLoginProbe" android:targetPackage="com.davlike.hutaoparcelbox" android:functionalTest="true" />
+</manifest>
