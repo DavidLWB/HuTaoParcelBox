@@ -5,7 +5,6 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.PorterDuff;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -26,6 +25,7 @@ public final class AboutActivity extends Activity {
     private static final String GITHUB_URL = "https://github.com/DavidLWB/HuTaoParcelBox";
     private static final String DEVELOPER = "Davlike";
     private static final String CONTACT_QQ = "536511760";
+    private static final String FEEDBACK_EMAIL = "fankui@davlike.qzz.io";
 
     private Palette palette;
     private int eggTaps;
@@ -92,8 +92,11 @@ public final class AboutActivity extends Activity {
         scroll.setFillViewport(true);
         LinearLayout column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
-        column.setGravity(Gravity.CENTER);
-        column.setPadding(dp(24), dp(24), dp(24), dp(24));
+        column.setGravity(Gravity.CENTER_HORIZONTAL);
+        column.setPadding(dp(28), dp(24), dp(28), dp(20));
+
+        View topSpace = new View(this);
+        column.addView(topSpace, new LinearLayout.LayoutParams(-1, dp(44)));
 
         ImageView icon = new ImageView(this);
         icon.setImageResource(R.drawable.ic_launcher_artwork);
@@ -106,10 +109,10 @@ public final class AboutActivity extends Activity {
         iconLayout.gravity = Gravity.CENTER_HORIZONTAL;
         column.addView(icon, iconLayout);
 
-        TextView name = label(getString(R.string.app_name), 24, palette.ink, true);
+        TextView name = label(getString(R.string.app_name), 26, palette.ink, true);
         name.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams nameLayout = new LinearLayout.LayoutParams(-2, -2);
-        nameLayout.topMargin = dp(16);
+        nameLayout.topMargin = dp(18);
         column.addView(name, nameLayout);
 
         TextView slogan = label(getString(R.string.app_slogan), 14, palette.muted, false);
@@ -118,63 +121,64 @@ public final class AboutActivity extends Activity {
         sloganLayout.topMargin = dp(8);
         column.addView(slogan, sloganLayout);
 
-        TextView beta = label("Beta 版本 · 仅供内部测试", 12, palette.accent, true);
-        beta.setGravity(Gravity.CENTER);
-        beta.setPadding(dp(14), dp(6), dp(14), dp(6));
-        beta.setBackground(background(palette.accentSoft, 14));
-        LinearLayout.LayoutParams betaLayout = new LinearLayout.LayoutParams(-2, -2);
-        betaLayout.topMargin = dp(20);
-        column.addView(beta, betaLayout);
-
-        TextView betaNote = label("正式上线前将移除该提示", 11, palette.muted, false);
-        betaNote.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams betaNoteLayout = new LinearLayout.LayoutParams(-2, -2);
-        betaNoteLayout.topMargin = dp(6);
-        column.addView(betaNote, betaNoteLayout);
+        View flexibleSpace = new View(this);
+        column.addView(flexibleSpace, new LinearLayout.LayoutParams(-1, 0, 1f));
 
         TextView version = label("版本 " + versionName(), 12, palette.muted, false);
         version.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams versionLayout = new LinearLayout.LayoutParams(-2, -2);
-        versionLayout.topMargin = dp(22);
-        column.addView(version, versionLayout);
+        column.addView(version, new LinearLayout.LayoutParams(-2, -2));
 
-        TextView developer = label("开发者：" + DEVELOPER, 13, palette.ink, true);
+        TextView developer = label("Produced by " + DEVELOPER, 13, palette.ink, true);
         developer.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams developerLayout = new LinearLayout.LayoutParams(-2, -2);
-        developerLayout.topMargin = dp(18);
+        developerLayout.topMargin = dp(10);
         column.addView(developer, developerLayout);
 
-        TextView contact = label("QQ：" + CONTACT_QQ, 13, palette.ink, false);
+        TextView contact = label("QQ：" + CONTACT_QQ, 12, palette.muted, false);
         contact.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams contactLayout = new LinearLayout.LayoutParams(-2, -2);
         contactLayout.topMargin = dp(6);
         column.addView(contact, contactLayout);
 
-        TextView github = label("访问 GitHub 仓库", 13, onAccent(), true);
+        TextView feedback = label("反馈：" + FEEDBACK_EMAIL, 12, palette.accent, false);
+        feedback.setGravity(Gravity.CENTER);
+        feedback.setPadding(dp(8), dp(4), dp(8), dp(4));
+        feedback.setClickable(true);
+        feedback.setFocusable(true);
+        feedback.setOnClickListener(v -> openFeedback());
+        LinearLayout.LayoutParams feedbackLayout = new LinearLayout.LayoutParams(-2, -2);
+        feedbackLayout.topMargin = dp(2);
+        column.addView(feedback, feedbackLayout);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.CENTER);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        TextView update = label("检查更新", 13, palette.accent, true);
+        update.setGravity(Gravity.CENTER);
+        update.setPadding(dp(18), dp(10), dp(18), dp(10));
+        update.setBackground(background(palette.accentSoft, 18));
+        update.setClickable(true);
+        update.setFocusable(true);
+        update.setOnClickListener(v -> UpdateChecker.check(this, true));
+        actions.addView(update);
+
+        TextView github = label("GitHub 仓库", 13, onAccent(), true);
         github.setGravity(Gravity.CENTER);
-        github.setPadding(dp(20), dp(10), dp(20), dp(10));
+        github.setPadding(dp(18), dp(10), dp(18), dp(10));
         github.setBackground(background(palette.accent, 18));
         github.setClickable(true);
         github.setFocusable(true);
         github.setOnClickListener(v -> openGithub());
         LinearLayout.LayoutParams githubLayout = new LinearLayout.LayoutParams(-2, -2);
-        githubLayout.topMargin = dp(24);
-        column.addView(github, githubLayout);
-
-        TextView update = label("检查更新", 13, palette.accent, true);
-        update.setGravity(Gravity.CENTER);
-        update.setPadding(dp(20), dp(10), dp(20), dp(10));
-        update.setBackground(background(palette.accentSoft, 18));
-        update.setClickable(true);
-        update.setFocusable(true);
-        update.setOnClickListener(v -> UpdateChecker.check(this, true));
-        LinearLayout.LayoutParams updateLayout = new LinearLayout.LayoutParams(-2, -2);
-        updateLayout.topMargin = dp(10);
-        column.addView(update, updateLayout);
+        githubLayout.setMarginStart(dp(10));
+        actions.addView(github, githubLayout);
+        LinearLayout.LayoutParams actionsLayout = new LinearLayout.LayoutParams(-2, -2);
+        actionsLayout.topMargin = dp(20);
+        column.addView(actions, actionsLayout);
 
         Switch autoUpdate = new Switch(this);
         autoUpdate.setText("启动时自动检测更新");
-        autoUpdate.setTextSize(13);
+        autoUpdate.setTextSize(12);
         autoUpdate.setTextColor(palette.ink);
         autoUpdate.setChecked(getSharedPreferences(Palette.PREF_UI, MODE_PRIVATE)
             .getBoolean(UpdateChecker.KEY_AUTO_UPDATE, true));
@@ -182,19 +186,61 @@ public final class AboutActivity extends Activity {
             getSharedPreferences(Palette.PREF_UI, MODE_PRIVATE).edit()
                 .putBoolean(UpdateChecker.KEY_AUTO_UPDATE, checked).apply());
         LinearLayout.LayoutParams autoUpdateLayout = new LinearLayout.LayoutParams(-2, -2);
-        autoUpdateLayout.topMargin = dp(18);
+        autoUpdateLayout.topMargin = dp(14);
         column.addView(autoUpdate, autoUpdateLayout);
 
-        TextView updateHint = label("检查更新会访问 GitHub Releases", 11, palette.muted, false);
+        TextView updateHint = label("检查更新会访问 GitHub Releases", 10, palette.muted, false);
         updateHint.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams updateHintLayout = new LinearLayout.LayoutParams(-2, -2);
-        updateHintLayout.topMargin = dp(6);
+        updateHintLayout.topMargin = dp(2);
         column.addView(updateHint, updateHintLayout);
+
+        TextView legal = label("Copyright © 2026 Davlike\n"
+            + "非官方取件辅助工具，与各平台无隶属关系。\n"
+            + "平台名称与标识归各平台所有。\n"
+            + "代码以 MIT License 开源，AndroidX WebKit 遵循 Apache-2.0。",
+            10, palette.muted, false);
+        legal.setGravity(Gravity.CENTER);
+        legal.setLineSpacing(dp(4), 1f);
+        LinearLayout.LayoutParams legalLayout = new LinearLayout.LayoutParams(-2, -2);
+        legalLayout.topMargin = dp(26);
+        column.addView(legal, legalLayout);
+
+        TextView license = label("查看开源许可", 11, palette.accent, false);
+        license.setGravity(Gravity.CENTER);
+        license.setPadding(dp(14), dp(10), dp(14), dp(10));
+        license.setClickable(true);
+        license.setFocusable(true);
+        license.setOnClickListener(v -> showLicenseDialog());
+        LinearLayout.LayoutParams licenseLayout = new LinearLayout.LayoutParams(-2, -2);
+        licenseLayout.topMargin = dp(4);
+        column.addView(license, licenseLayout);
 
         scroll.addView(column);
         root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         root.addView(back, backLayout);
         root.post(root::requestApplyInsets);
+    }
+
+    private void openFeedback() {
+        Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:" + FEEDBACK_EMAIL));
+        intent.putExtra(Intent.EXTRA_SUBJECT, "蝶引速取反馈");
+        try {
+            startActivity(intent);
+        } catch (ActivityNotFoundException | SecurityException unavailable) {
+            android.widget.Toast.makeText(this, "未找到邮件应用", android.widget.Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showLicenseDialog() {
+        new AlertDialog.Builder(this,
+            palette.dark ? R.style.AppDialogThemeDark : R.style.AppDialogThemeLight)
+            .setTitle("开源许可")
+            .setMessage("本项目代码采用 MIT License 开源，完整文本见项目仓库的 LICENSE 文件。\n\n"
+                + "内置 AndroidX WebKit 采用 Apache-2.0 License，许可文本随应用提供。\n\n"
+                + "部分实现方案参考 HandyCode（MIT License）。")
+            .setPositiveButton("知道了", null)
+            .show();
     }
 
     private void registerEggTap() {
@@ -207,7 +253,7 @@ public final class AboutActivity extends Activity {
         new AlertDialog.Builder(this,
             palette.dark ? R.style.AppDialogThemeDark : R.style.AppDialogThemeLight)
             .setTitle("彩蛋")
-            .setMessage("可恶，这都被你发现啦！\n\n首批测试人员：\n行者无敌\n人之常情\n汤臣一品518全体成员")
+            .setMessage("可恶，这都被你发现啦！\n\n初版测试人员：\n行者无敌\n人之常情\n汤臣一品518全体成员")
             .setPositiveButton("哈哈", null)
             .show();
     }
