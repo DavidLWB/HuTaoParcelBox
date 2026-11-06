@@ -2058,7 +2058,7 @@ public final class MainActivity extends Activity {
             TextView logout = pill("退出登录", false);
             LinearLayout.LayoutParams logoutLayout = new LinearLayout.LayoutParams(-2, -2);
             logoutLayout.setMarginStart(dp(8));
-            logout.setOnClickListener(v -> confirmLogout(platform));
+            logout.setOnClickListener(v -> requestLogout(platform));
             actions.addView(logout, logoutLayout);
         }
         row.addView(actions, actionsLayout);
@@ -2085,29 +2085,70 @@ public final class MainActivity extends Activity {
             openPddApp(SECTION_IDENTITY);
             return;
         }
+        boolean hidden = isPlatformHidden(platform);
+        if (hidden) {
+            showHiddenPlatformDialog(platform, () -> continuePlatformLogin(platform));
+            return;
+        }
+        continuePlatformLogin(platform);
+    }
+
+    private boolean isPlatformHidden(int platform) {
+        return platform == PLATFORM_JD
+            ? parcelsHidden[platform] : identityHidden[platform];
+    }
+
+    private void showHiddenPlatformDialog(int platform, Runnable continueAction) {
+        new AlertDialog.Builder(this, dialogTheme())
+            .setTitle("该平台已被隐藏")
+            .setMessage(PLATFORM_NAMES[platform]
+                + "平台已被隐藏，管理账号状态需先取消隐藏，是否恢复显示该平台？")
+            .setNegativeButton("保持隐藏", null)
+            .setPositiveButton("恢复显示", (dialog, which) -> {
+                restorePlatformVisibility(platform);
+                continueAction.run();
+            })
+            .show();
+    }
+
+    private void restorePlatformVisibility(int platform) {
         if (platform == PLATFORM_JD) {
-            if (parcelsHidden[platform]) {
-                parcelsHidden[platform] = false;
-                persistHidden(SECTION_PARCELS);
-            }
+            parcelsHidden[platform] = false;
+            persistHidden(SECTION_PARCELS);
+            parcelsScroll = null;
+        } else {
+            identityHidden[platform] = false;
+            persistHidden(SECTION_IDENTITY);
+            identityScroll = null;
+        }
+    }
+
+    private void requestLogout(int platform) {
+        if (isPlatformHidden(platform)) {
+            showHiddenPlatformDialog(platform, () -> confirmLogout(platform));
+            return;
+        }
+        confirmLogout(platform);
+    }
+
+    private void continuePlatformLogin(int platform) {
+        if (platform == PLATFORM_JD) {
             section = SECTION_PARCELS;
             parcelsExpanded[platform] = true;
             accountOpen = false;
             rememberState();
             renderContent();
-            scrollToCard(parcelsScroll, parcelsCards[platform].card);
+            PlatformCard card = parcelsCards[platform];
+            if (card != null) scrollToCard(parcelsScroll, card.card);
             return;
-        }
-        if (identityHidden[platform]) {
-            identityHidden[platform] = false;
-            persistHidden(SECTION_IDENTITY);
         }
         section = SECTION_IDENTITY;
         identityExpanded[platform] = true;
         accountOpen = false;
         rememberState();
         renderContent();
-        scrollToCard(identityScroll, identityCards[platform].card);
+        PlatformCard card = identityCards[platform];
+        if (card != null) scrollToCard(identityScroll, card.card);
         if (platform == PLATFORM_PDD && !pddAppMode && !signedIn[PLATFORM_PDD]) {
             showPddModeDialog(true);
         }

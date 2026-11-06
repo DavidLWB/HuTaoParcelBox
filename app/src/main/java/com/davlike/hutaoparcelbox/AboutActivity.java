@@ -255,7 +255,7 @@ public final class AboutActivity extends Activity {
         new AlertDialog.Builder(this,
             palette.dark ? R.style.AppDialogThemeDark : R.style.AppDialogThemeLight)
             .setTitle("彩蛋")
-            .setMessage("可恶，这都被你发现啦！\n\n初版测试人员：\n行者无敌\n人之常情\n汤臣一品518全体成员")
+            .setMessage("可恶，这都被你发现啦！\n\n初版测试人员：\n行者无敌\n人之常情\n汤臣一品518全体成员\n\n金牌测试员：L1ght")
             .setPositiveButton("哈哈", null)
             .show();
     }
