@@ -19,10 +19,9 @@
 <p align="center">
   <img src="screenshots/identity.png" width="240" alt="身份码页面">
   <img src="screenshots/more.png" width="240" alt="更多页面">
-  <img src="screenshots/about.png" width="240" alt="关于页面">
 </p>
 
-<p align="center"><sub>身份码 · 更多 · 关于</sub></p>
+<p align="center"><sub>身份码 · 更多</sub></p>
 
 ## 支持平台
 
@@ -72,9 +71,13 @@
 - 除检查更新访问 GitHub 公共接口外，没有自建服务器、统计 SDK、崩溃上报或埋点。
 - 登录、验证码和包裹查询均由各平台官方页面执行。
 
-本项目的代码以 **MIT License** 发布，完整文本见 [LICENSE](LICENSE)，其中保留上游 HandyCode 的 MIT 版权声明。应用内置的 AndroidX WebKit 组件遵循 **Apache-2.0**，许可文本随应用打包在 `assets/licenses/androidx-webkit.txt`。测试环境使用的 linkedom 遵循 **MIT**，不随 APK 分发。
+自 **1.0.1** 起，本项目以 **GNU AGPL-3.0-only** 发布，完整文本见 [LICENSE](LICENSE)；1.0.0 及更早版本仍按 MIT 发布。上游 HandyCode 代码继续遵循 MIT，AndroidX WebKit 遵循 Apache-2.0，测试环境 linkedom 遵循 ISC，均保留其原许可证。第三方版权、平台商标与许可文本见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-图标中的角色形象权利归原权利人，MIT 许可不涵盖该图形。淘宝、拼多多、京东、小红书、美团、抖音、菜鸟等平台名称与标识仅用于功能识别，权利归各平台所有。
+源码地址：https://github.com/DavidLWB/HuTaoParcelBox
+
+如商业或闭源使用无法遵守 AGPL-3.0 的义务，请联系 **fankui@davlike.qzz.io** 获取商业授权，详见 [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)。
+
+淘宝、拼多多、京东、小红书、美团、抖音、菜鸟等平台名称与标识仅用于功能识别，权利归各平台所有。
 
 ## 项目结构
 

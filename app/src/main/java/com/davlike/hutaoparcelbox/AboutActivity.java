@@ -198,7 +198,8 @@ public final class AboutActivity extends Activity {
         TextView legal = label("Copyright © 2026 Davlike\n"
             + "非官方取件辅助工具，与各平台无隶属关系。\n"
             + "平台名称与标识归各平台所有。\n"
-            + "代码以 MIT License 开源，AndroidX WebKit 遵循 Apache-2.0。",
+            + "本项目以 AGPL-3.0-only 开源；商业/闭源授权请联系 fankui@davlike.qzz.io。\n"
+            + "AndroidX WebKit 遵循 Apache-2.0。",
             10, palette.muted, false);
         legal.setGravity(Gravity.CENTER);
         legal.setLineSpacing(dp(4), 1f);
@@ -236,9 +237,10 @@ public final class AboutActivity extends Activity {
         new AlertDialog.Builder(this,
             palette.dark ? R.style.AppDialogThemeDark : R.style.AppDialogThemeLight)
             .setTitle("开源许可")
-            .setMessage("本项目代码采用 MIT License 开源，完整文本见项目仓库的 LICENSE 文件。\n\n"
-                + "内置 AndroidX WebKit 采用 Apache-2.0 License，许可文本随应用提供。\n\n"
-                + "部分实现方案参考 HandyCode（MIT License）。")
+            .setMessage("本项目以 GNU AGPL-3.0-only 许可证开源，完整文本见项目仓库的 LICENSE 文件。\n\n"
+                + "商业或闭源使用无法遵守 AGPL-3.0 时，请联系 fankui@davlike.qzz.io 获取商业授权。\n\n"
+                + "内置 AndroidX WebKit 采用 Apache-2.0 License；部分实现方案参考 HandyCode（MIT License）。\n\n"
+                + "源码：https://github.com/DavidLWB/HuTaoParcelBox")
             .setPositiveButton("知道了", null)
             .show();
     }
